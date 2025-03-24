@@ -103,6 +103,35 @@ app.post('/login', async (req, res) => {
   }
 });
 
+
+app.post("/register-project", async (req, res) => {
+  try {
+      const { builder_id, project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction } = req.body;
+      
+      console.log("Received Data:", req.body); // Debugging log
+      
+      if (!builder_id || !project_name) {
+          return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const { data, error } = await supabase
+          .from("projects")
+          .insert([{ builder_id, project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction }]);
+
+      if (error) {
+          console.error("Supabase Error:", error);
+          return res.status(500).json({ error: error.message });
+      }
+
+      res.status(200).json({ message: "Project registered successfully", data });
+  } catch (err) {
+      console.error("Server Error:", err);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

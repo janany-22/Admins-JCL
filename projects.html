@@ -765,13 +765,6 @@
                             <option value="Industrial">Industrial</option>
                           </select>
                         </div>
-                        <div id="floorDetails" style="display: none;">
-                          <div class="col-md-12">
-                            <label for="numFloors" class="form-label">Number of Floors:</label>
-                            <input type="number" class="form-control" id="numFloors" value="1" min="1" onchange="updateFloorDetails()" />
-                          </div>
-                          <div id="floorInfo"></div>
-                        </div>
                         <div class="col-md-12">
                           <label for="input10" class="form-label">Address</label>
                           <textarea class="form-control" id="input10" placeholder="Address ..." rows="3" required></textarea>
@@ -881,57 +874,54 @@
   <script src="assets/js/main.js"></script>
 
   <script>
-    const MAX_FLOORS = 4; // Maximum number of floors allowed
-    let currentFloors = 0; // Start with 0 floors
+  document.getElementById("projectForm").addEventListener("submit", async function(event) {
+    event.preventDefault(); // Prevent default form submission
 
-    function toggleFloorDetails() {
-      const constructionType = document.getElementById('constructionType').value;
-      const floorDetails = document.getElementById('floorDetails');
-      if (constructionType === 'Residential') {
-        floorDetails.style.display = 'block';
+    // Get form values
+    const projectData = {
+      builder_id: 1, // Replace with logged-in builder's ID
+      project_name: document.getElementById("input1").value,
+      total_square_feet: parseInt(document.getElementById("input4").value),
+      estimated_cost: parseFloat(document.getElementById("input5").value),
+      estimated_time_months: parseInt(document.getElementById("input12").value),
+      start_date: document.getElementById("input2").value,
+      end_date: document.getElementById("input3").value,
+      type_of_construction: document.getElementById("constructionType").value
+    };
+
+    console.log("Sending Data:", projectData); // Debugging log
+
+    try {
+      const response = await fetch("http://localhost:3000/register-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(projectData),
+      });
+
+      const data = await response.json();
+      console.log("Response:", data); // Debugging log
+
+      if (response.ok) {
+        alert("✅ Project Registered Successfully!");
+        document.getElementById("projectForm").reset(); // Reset form
+        resetForm(); // Call reset function
       } else {
-        floorDetails.style.display = 'none';
-        document.getElementById('floorInfo').innerHTML = ''; // Clear floor details if not residential
+        alert("❌ Error: " + data.error);
       }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("⚠️ Server error. Please try again.");
     }
+  });
 
-    function updateFloorDetails() {
-      const numFloors = parseInt(document.getElementById('numFloors').value) || 0;
-      const floorInfo = document.getElementById('floorInfo');
-      floorInfo.innerHTML = ''; // Clear previous floor details
+  function resetForm() {
+    document.getElementById('constructionType').value = '';
+    document.getElementById('projectForm').reset();
+  }
+</script>
 
-      for (let i = 1; i <= numFloors; i++) {
-        floorInfo.innerHTML += `
-          <div class="border p-3 mt-2 rounded">
-            <h5 class="font-medium">Floor ${i}</h5>
-            <label>Number of Apartments:</label>
-            <input type="number" class="form-control mb-2" id="numApartments${i}" value="1" min="1" />
-            <label>Apartment Types:</label>
-            <div class="flex flex-wrap gap-2 mt-1">
-              ${['1BHK', '2BHK', '3BHK'].map(type => `
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="apartmentType${i}${type}" />
-                  <label class="form-check-label" for="apartmentType${i}${type}">${type}</label>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
-    }
 
-    function resetForm() {
-      // Reset the current floors count
-      currentFloors = 0;
-      // Clear the floor info
-      document.getElementById('floorInfo').innerHTML = '';
-      // Reset the construction type to default
-      document.getElementById('constructionType').value = '';
-      // Hide floor details section
-      document.getElementById('floorDetails').style.display = 'none';
-      // Reset the form fields
-      document.getElementById('projectForm').reset();
-    }
+    
   </script>
 </body>
 
