@@ -10,7 +10,7 @@ const port = 3000;
 app.use(express.json());
 app.use(cors());
 
-// Initialize Supabase client (without custom fetch)
+// Initialize Supabase client
 const supabaseUrl = 'https://knesrbcxvilzfcgxpshp.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuZXNyYmN4dmlsemZjZ3hwc2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExNjc3MTksImV4cCI6MjA1Njc0MzcxOX0.PyPFZgP4wIYvYmDyaC_XV1UjvcHZ8CaS3YISxJ7Azm4';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -59,7 +59,7 @@ app.post('/register', async (req, res) => {
 
     if (error) {
       console.error('Supabase insert error:', error);
-      if (error.code === '23505') { // Unique constraint violation (email already exists)
+      if (error.code === '23505') {
         return res.status(400).json({ error: 'Email already exists' });
       }
       return res.status(500).json({ error: 'Error registering user', details: error });
@@ -73,7 +73,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Login endpoint (for reference)
+// Login endpoint
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -103,34 +103,143 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
+// Register a new project
 app.post("/register-project", async (req, res) => {
   try {
-      const { builder_id, project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction } = req.body;
-      
-      console.log("Received Data:", req.body); // Debugging log
-      
-      if (!builder_id || !project_name) {
-          return res.status(400).json({ error: "Missing required fields" });
-      }
+    const { builder_id, project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction, address } = req.body;
 
-      const { data, error } = await supabase
-          .from("projects")
-          .insert([{ builder_id, project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction }]);
+    console.log("Received Data:", req.body);
 
-      if (error) {
-          console.error("Supabase Error:", error);
-          return res.status(500).json({ error: error.message });
-      }
+    // Validate all required fields
+    if (!builder_id || !project_name || !total_square_feet || !estimated_cost || !estimated_time_months || !start_date || !end_date || !type_of_construction || !address) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
 
-      res.status(200).json({ message: "Project registered successfully", data });
+    const { data, error } = await supabase
+      .from("projects_users")
+      .insert([{
+        builder_id,
+        project_name,
+        total_square_feet,
+        estimated_cost,
+        estimated_time_months,
+        start_date,
+        end_date,
+        type_of_construction,
+        address
+      }])
+      .select();
+
+    if (error) {
+      console.error("Supabase Error:", error);
+      return res.status(500).json({ error: "Error registering project", details: error.message });
+    }
+
+    res.status(200).json({ message: "Project registered successfully", data });
   } catch (err) {
-      console.error("Server Error:", err);
-      res.status(500).json({ error: "Internal server error" });
+    console.error("Server Error:", err);
+    res.status(500).json({ error: "Internal server error", details: err.message });
   }
 });
 
+// Fetch all projects for a specific builder
+app.get('/projects_users/:builder_id', async (req, res) => {
+  try {
+    const { builder_id } = req.params;
 
+    if (!builder_id) {
+      return res.status(400).json({ error: 'Builder ID is required' });
+    }
+
+    const { data, error } = await supabase
+      .from('projects_users')
+      .select('*')
+      .eq('builder_id', builder_id);
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return res.status(500).json({ error: 'Error fetching projects', details: error });
+    }
+
+    // Always return a 200 status with an empty array if no projects are found
+    res.status(200).json({ message: 'Projects fetched successfully', projects: data || [] });
+  } catch (err) {
+    console.error('Server error during project fetch:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// Update a project
+app.put('/projects_users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { project_name, total_square_feet, estimated_cost, estimated_time_months, start_date, end_date, type_of_construction, address } = req.body;
+
+    if (!id || !project_name || !total_square_feet || !estimated_cost || !estimated_time_months || !start_date || !end_date || !type_of_construction || !address) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const { data, error } = await supabase
+      .from('projects_users')
+      .update({
+        project_name,
+        total_square_feet,
+        estimated_cost,
+        estimated_time_months,
+        start_date,
+        end_date,
+        type_of_construction,
+        address
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('Supabase update error:', error);
+      return res.status(500).json({ error: 'Error updating project', details: error });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.status(200).json({ message: 'Project updated successfully', data });
+  } catch (err) {
+    console.error('Server error during project update:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// Delete a project (optional, for future use)
+app.delete('/projects_users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+
+    const { data, error } = await supabase
+      .from('projects_users')
+      .delete()
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('Supabase delete error:', error);
+      return res.status(500).json({ error: 'Error deleting project', details: error });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.status(200).json({ message: 'Project deleted successfully', data });
+  } catch (err) {
+    console.error('Server error during project delete:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
 
 // Start the server
 app.listen(port, () => {
