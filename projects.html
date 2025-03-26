@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en" data-bs-theme="blue-theme">
 
@@ -29,18 +30,69 @@
   <link href="sass/bordered-theme.css" rel="stylesheet">
   <link href="sass/responsive.css" rel="stylesheet">
 
-  <!-- Custom CSS to center the content -->
+  <!-- Custom CSS -->
   <style>
     .centered-content {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh; /* Full viewport height */
+      min-height: 100vh;
       padding: 20px;
     }
     .form-container {
-      max-width: 600px; /* Optional: Limit the width of the form */
+      max-width: 1200px;
       width: 100%;
+    }
+    .table-container {
+      margin-top: 20px;
+      background: #1a252f;
+      border-radius: 10px;
+      padding: 20px;
+      color: #d1d4d7;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #d1d4d7;
+    }
+    .table th, .table td {
+      vertical-align: middle;
+      font-size: 14px;
+      padding: 12px;
+      border: 1px solid #2a3f54;
+    }
+    .table th {
+      background-color: #2a3f54;
+      color: #ffffff;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .table tbody tr:nth-child(odd) {
+      background-color: #1a252f;
+    }
+    .table tbody tr:nth-child(even) {
+      background-color: #212d3b;
+    }
+    .table tbody tr:hover {
+      background-color: #2a3f54;
+    }
+    .action-btn {
+      margin: 0 5px;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 12px;
+    }
+    .view-btn {
+      background: #007bff;
+    }
+    .edit-btn {
+      background: #28a745;
+    }
+    .border-top {
+      border-top: 1px solid #2a3f54;
     }
   </style>
 </head>
@@ -758,7 +810,7 @@
                         </div>
                         <div class="col-md-12 form-group">
                           <label for="constructionType" class="form-label">Type of Construction:</label>
-                          <select id="constructionType" class="form-select" onchange="toggleFloorDetails()">
+                          <select id="constructionType" class="form-select" onchange="toggleFloorDetails()" required>
                             <option value="">Select Type</option>
                             <option value="Residential">Residential</option>
                             <option value="Commercial">Commercial</option>
@@ -787,12 +839,61 @@
                 </div>
               </div>
             </div>
+
+            <!-- Projects Table -->
+            <div class="table-container">
+              <h5 class="mb-0 mt-4">Projects List</h5>
+              <div class="my-3 border-top"></div>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>S.No</th>
+                    <th>Project Name</th>
+                    <th>Total Square Feet</th>
+                    <th>Estimated Cost</th>
+                    <th>Estimated Time (Months)</th>
+                    <th>Type of Construction</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                  <!-- Data will be populated dynamically -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </main>
   <!--end main wrapper-->
+
+  <!-- View Project Modal -->
+  <div class="modal fade" id="ViewProjectModal" tabindex="-1" aria-labelledby="ViewProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-bottom-0 py-2 bg-grd-info">
+          <h5 class="modal-title" id="ViewProjectModalLabel">Project Details</h5>
+          <a href="javascript:;" class="primaery-menu-close" data-bs-dismiss="modal">
+            <i class="material-icons-outlined">close</i>
+          </a>
+        </div>
+        <div class="modal-body">
+          <div class="form-body">
+            <p><strong>Project Name:</strong> <span id="viewProjectName"></span></p>
+            <p><strong>Total Square Feet:</strong> <span id="viewTotalSquareFeet"></span></p>
+            <p><strong>Estimated Cost:</strong> <span id="viewEstimatedCost"></span></p>
+            <p><strong>Estimated Time (Months):</strong> <span id="viewEstimatedTime"></span></p>
+            <p><strong>Type of Construction:</strong> <span id="viewTypeOfConstruction"></span></p>
+            <p><strong>Start Date:</strong> <span id="viewStartDate"></span></p>
+            <p><strong>End Date:</strong> <span id="viewEndDate"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!--start overlay-->
   <div class="overlay btn-toggle"></div>
@@ -874,55 +975,208 @@
   <script src="assets/js/main.js"></script>
 
   <script>
-  document.getElementById("projectForm").addEventListener("submit", async function(event) {
-    event.preventDefault(); // Prevent default form submission
+    const API_URL = 'http://localhost:3000'; // Backend URL
+    const BUILDER_ID = 1; // Replace with the logged-in builder's ID in a real application
 
-    // Get form values
-    const projectData = {
-      builder_id: 1, // Replace with logged-in builder's ID
-      project_name: document.getElementById("input1").value,
-      total_square_feet: parseInt(document.getElementById("input4").value),
-      estimated_cost: parseFloat(document.getElementById("input5").value),
-      estimated_time_months: parseInt(document.getElementById("input12").value),
-      start_date: document.getElementById("input2").value,
-      end_date: document.getElementById("input3").value,
-      type_of_construction: document.getElementById("constructionType").value
-    };
+    // Fetch and display projects
+    async function fetchProjects() {
+      try {
+        const response = await fetch(`${API_URL}/projects_users/${BUILDER_ID}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-    console.log("Sending Data:", projectData); // Debugging log
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+        }
 
-    try {
-      const response = await fetch("http://localhost:3000/register-project", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectData),
-      });
+        const result = await response.json();
+        const projects = result.projects || [];
+        const tableBody = document.getElementById('projectsTableBody');
+        tableBody.innerHTML = ''; // Clear existing rows
 
-      const data = await response.json();
-      console.log("Response:", data); // Debugging log
+        if (projects.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No projects found for this builder.</td></tr>';
+          return;
+        }
 
-      if (response.ok) {
-        alert("✅ Project Registered Successfully!");
-        document.getElementById("projectForm").reset(); // Reset form
-        resetForm(); // Call reset function
-      } else {
-        alert("❌ Error: " + data.error);
+        projects.forEach((project, index) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${project.project_name}</td>
+            <td>${project.total_square_feet}</td>
+            <td>$${project.estimated_cost.toLocaleString()}</td>
+            <td>${project.estimated_time_months}</td>
+            <td>${project.type_of_construction}</td>
+            <td>${project.start_date}</td>
+            <td>${project.end_date}</td>
+            <td>
+              <a href="#" class="action-btn view-btn" onclick="viewProject('${project.id}')">View</a>
+              <a href="#" class="action-btn edit-btn" onclick="editProject('${project.id}')">Edit</a>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        const tableBody = document.getElementById('projectsTableBody');
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center">Error loading projects: ${error.message}. Please try again later.</td></tr>`;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("⚠️ Server error. Please try again.");
     }
-  });
 
-  function resetForm() {
-    document.getElementById('constructionType').value = '';
-    document.getElementById('projectForm').reset();
-  }
-</script>
+    // View project details
+    async function viewProject(projectId) {
+      try {
+        const response = await fetch(`${API_URL}/projects_users/${BUILDER_ID}`);
+        const result = await response.json();
+        const project = result.projects.find(p => p.id === projectId);
 
+        if (project) {
+          document.getElementById('viewProjectName').textContent = project.project_name;
+          document.getElementById('viewTotalSquareFeet').textContent = project.total_square_feet;
+          document.getElementById('viewEstimatedCost').textContent = `$${project.estimated_cost.toLocaleString()}`;
+          document.getElementById('viewEstimatedTime').textContent = project.estimated_time_months;
+          document.getElementById('viewTypeOfConstruction').textContent = project.type_of_construction;
+          document.getElementById('viewStartDate').textContent = project.start_date;
+          document.getElementById('viewEndDate').textContent = project.end_date;
 
-    
+          const viewModal = new bootstrap.Modal(document.getElementById('ViewProjectModal'));
+          viewModal.show();
+        } else {
+          alert('Project not found');
+        }
+      } catch (error) {
+        console.error('Error fetching project details:', error);
+        alert('Error fetching project details');
+      }
+    }
+
+    // Edit project
+    async function editProject(projectId) {
+      try {
+        const response = await fetch(`${API_URL}/projects_users/${BUILDER_ID}`);
+        const result = await response.json();
+        const project = result.projects.find(p => p.id === projectId);
+
+        if (project) {
+          // Pre-fill the form with project data
+          document.getElementById('input1').value = project.project_name;
+          document.getElementById('input4').value = project.total_square_feet;
+          document.getElementById('input5').value = project.estimated_cost;
+          document.getElementById('input12').value = project.estimated_time_months;
+          document.getElementById('input2').value = project.start_date;
+          document.getElementById('input3').value = project.end_date;
+          document.getElementById('constructionType').value = project.type_of_construction;
+          document.getElementById('input10').value = project.address || '';
+
+          // Change the form behavior to update instead of create
+          const form = document.getElementById('projectForm');
+          form.removeEventListener('submit', handleFormSubmit); // Remove previous listener
+
+          form.addEventListener('submit', async function updateHandler(event) {
+            event.preventDefault();
+
+            const updatedProjectData = {
+              project_name: document.getElementById("input1").value,
+              total_square_feet: parseInt(document.getElementById("input4").value),
+              estimated_cost: parseFloat(document.getElementById("input5").value),
+              estimated_time_months: parseInt(document.getElementById("input12").value),
+              start_date: document.getElementById("input2").value,
+              end_date: document.getElementById("input3").value,
+              type_of_construction: document.getElementById("constructionType").value,
+              address: document.getElementById("input10").value
+            };
+
+            try {
+              const updateResponse = await fetch(`${API_URL}/projects_users/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedProjectData),
+              });
+
+              const updateData = await updateResponse.json();
+              if (updateResponse.ok) {
+                alert('✅ Project Updated Successfully!');
+                fetchProjects(); // Refresh the table
+                const modal = bootstrap.Modal.getInstance(document.getElementById('FormModal'));
+                modal.hide();
+                form.removeEventListener('submit', updateHandler); // Remove update handler
+                form.addEventListener('submit', handleFormSubmit); // Reattach create handler
+              } else {
+                alert('❌ Error: ' + updateData.error);
+              }
+            } catch (error) {
+              console.error('Error updating project:', error);
+              alert('⚠️ Server error. Please try again.');
+            }
+          });
+
+          // Open the modal
+          const editModal = new bootstrap.Modal(document.getElementById('FormModal'));
+          editModal.show();
+        } else {
+          alert('Project not found');
+        }
+      } catch (error) {
+        console.error('Error fetching project for editing:', error);
+        alert('Error fetching project for editing');
+      }
+    }
+
+    // Handle form submission for creating a new project
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+
+      const projectData = {
+        builder_id: BUILDER_ID,
+        project_name: document.getElementById("input1").value,
+        total_square_feet: parseInt(document.getElementById("input4").value),
+        estimated_cost: parseFloat(document.getElementById("input5").value),
+        estimated_time_months: parseInt(document.getElementById("input12").value),
+        start_date: document.getElementById("input2").value,
+        end_date: document.getElementById("input3").value,
+        type_of_construction: document.getElementById("constructionType").value,
+        address: document.getElementById("input10").value
+      };
+
+      try {
+        const response = await fetch(`${API_URL}/register-project`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(projectData),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          alert("✅ Project Registered Successfully!");
+          document.getElementById("projectForm").reset();
+          resetForm();
+          fetchProjects(); // Refresh the table
+          const modal = bootstrap.Modal.getInstance(document.getElementById('FormModal'));
+          modal.hide();
+        } else {
+          alert("❌ Error: " + data.error);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("⚠️ Server error. Please try again.");
+      }
+    }
+
+    // Reset form
+    function resetForm() {
+      document.getElementById('constructionType').value = '';
+      document.getElementById('projectForm').reset();
+    }
+
+    // Attach form submission handler
+    document.getElementById("projectForm").addEventListener("submit", handleFormSubmit);
+
+    // Fetch projects when the page loads
+    window.onload = fetchProjects;
   </script>
 </body>
-
 </html>
